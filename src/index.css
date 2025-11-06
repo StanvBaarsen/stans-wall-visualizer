@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html,
+body {
+	margin: 0;
+	padding: 0;
+	width: 100vw;
+	height: 100vh;
+	overflow: hidden;
+	font-family: "Inter", Roboto, Helvetica, Arial, sans-serif;
+	color: #222;
+	display: flex;
+	justify-content: center;
+	align-items: flex-end;
+	position: relative;
+	background: linear-gradient(to top, #6fb96f 0% 25%, #a0e4ff 25% 100%);
+	transition: background 1.5s ease-in-out;
+}
+
+/* Night mode background */
+body:has(.night-mode) {
+	background: linear-gradient(to top, #1a3a1a 0% 25%, #0f1e3a 25% 100%);
+}
+
+/* Moon */
+#moon {
+	content: "";
+	position: fixed;
+	top: 60px;
+	right: 80px;
+	width: 120px;
+	height: 120px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 30% 30%, #f0f0f0, #d4d4d4);
+	box-shadow: 0 0 60px 20px rgba(200, 200, 220, 0.4);
+	z-index: 0;
+	transition: all 1.5s ease-in-out;
+}
+
+#moon.moon-exit {
+	right: -200px;
+	opacity: 0;
+}
+
+/* Sun */
+#sun {
+	content: "";
+	position: fixed;
+	top: 60px;
+	right: -200px;
+	width: 120px;
+	height: 120px;
+	border-radius: 50%;
+	background: radial-gradient(circle at 30% 30%, #fff9c4, #fdd835);
+	box-shadow: 0 0 60px 20px rgba(255, 235, 59, 0.5);
+	z-index: 0;
+	transition: all 1.5s ease-in-out;
+}
+
+#sun.sun-enter {
+	right: 80px;
+}
+
+#main {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding-bottom: 5vh;
+	background: none;
+	box-shadow: none;
+	border: none;
+}
+
+#main header h1 {
+	font-size: 2.4rem;
+	margin: 0;
+	font-weight: 800;
+	color: #333;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	letter-spacing: -0.02em;
+}
+
+#instructions {
+	text-align: center;
+	color: #555;
+	font-size: 1rem;
+	margin-bottom: 8px;
+}
+
+#instructions kbd {
+	background: #f0f0f0;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 2px 6px;
+	font-family: monospace;
+	font-size: 0.9rem;
+	box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+#wall {
+	background: rgba(255, 255, 255, 0.8);
+}
+
+#robot {
+	position: absolute;
+	transform: translate(-50%, 50%);
+	background-color: white;
+	border-radius: 50%;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 24px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	transition: all 300ms;
+}
+
+#envelope {
+	position: absolute;
+	border: 2px solid #3b82f6;
+	background: rgb(47, 108, 206, .2);
+	transition: all 300ms;
+}
