@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 html,
 body {
 	margin: 0;
@@ -18,48 +19,17 @@ body {
 	transition: background 1.5s ease-in-out;
 }
 
-/* Night mode background */
-body:has(.night-mode) {
-	background: linear-gradient(to top, #1a3a1a 0% 25%, #0f1e3a 25% 100%);
-}
-
-/* Moon */
-#moon {
+body::after {
 	content: "";
 	position: fixed;
 	top: 60px;
 	right: 80px;
-	width: 120px;
-	height: 120px;
-	border-radius: 50%;
-	background: radial-gradient(circle at 30% 30%, #f0f0f0, #d4d4d4);
-	box-shadow: 0 0 60px 20px rgba(200, 200, 220, 0.4);
-	z-index: 0;
-	transition: all 1.5s ease-in-out;
-}
-
-#moon.moon-exit {
-	right: -200px;
-	opacity: 0;
-}
-
-/* Sun */
-#sun {
-	content: "";
-	position: fixed;
-	top: 60px;
-	right: -200px;
 	width: 120px;
 	height: 120px;
 	border-radius: 50%;
 	background: radial-gradient(circle at 30% 30%, #fff9c4, #fdd835);
 	box-shadow: 0 0 60px 20px rgba(255, 235, 59, 0.5);
-	z-index: 0;
 	transition: all 1.5s ease-in-out;
-}
-
-#sun.sun-enter {
-	right: 80px;
 }
 
 #main {
@@ -101,6 +71,18 @@ body:has(.night-mode) {
 	box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
 
+#entireWallHint {
+	font-size: 0.7rem;
+	padding-left: 6px;
+	position: relative;
+	top: -4px;
+}
+
+#entireWallHint kbd {
+	padding: 1px 4px;
+	font-size: 0.7rem;
+}
+
 #wall {
 	background: rgba(255, 255, 255, 0.8);
 }
@@ -108,14 +90,8 @@ body:has(.night-mode) {
 #robot {
 	position: absolute;
 	transform: translate(-50%, 50%);
-	background-color: white;
-	border-radius: 50%;
 	width: 40px;
 	height: 40px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 24px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	transition: all 300ms;
 }
@@ -123,6 +99,38 @@ body:has(.night-mode) {
 #envelope {
 	position: absolute;
 	border: 2px solid #3b82f6;
-	background: rgb(47, 108, 206, .2);
+	background: rgb(47, 108, 206, 0.2);
 	transition: all 300ms;
+}
+
+#infoBox {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	background-color: rgba(255, 253, 243, 0.6);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
+	border-radius: 12px;
+	padding: 12px 18px;
+	font-size: 0.85rem;
+	line-height: 1.3;
+	color: #222;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	max-width: 250px;
+	transition: opacity 0.3s ease;
+}
+
+#infoBox a {
+	color: #222;
+}
+
+
+#infoBox kbd {
+	background: #f0f0f0;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 2px 6px;
+	font-family: monospace;
+	font-size: 0.9rem;
+	box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
