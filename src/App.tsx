@@ -1,73 +1,18 @@
 import React, { useEffect, useState, useRef } from "react";
+import { InfoBox } from "./InfoBox";
+import { WallVisualization } from "./WallVisualization";
+import {
+	BRICK_HEIGHT,
+	BED_JOINT,
+	COURSE_HEIGHT,
+	WALL_WIDTH,
+	WALL_HEIGHT,
+	ENVELOPE_WIDTH,
+	ENVELOPE_HEIGHT,
+	type Brick,
+} from "./constants";
+import { generateWall } from "./wallGenerators.ts";
 
-// sizes in mm
-const FULL_BRICK_WIDTH = 210;
-const HALF_BRICK_WIDTH = 100;
-const BRICK_HEIGHT = 50;
-const HEAD_JOINT = 10;
-const BED_JOINT = 12.5;
-const COURSE_HEIGHT = BRICK_HEIGHT + BED_JOINT;
-const WALL_WIDTH = 2300;
-const WALL_HEIGHT = 2000;
-const ENVELOPE_WIDTH = 800;
-const ENVELOPE_HEIGHT = 1300;
-
-// pixels per millimeter:
-const TOTAL_WIDTH_IN_PIXELS = 525;
-const PIXELS_PER_MM = TOTAL_WIDTH_IN_PIXELS / WALL_WIDTH;
-
-interface Brick {
-	x: number;
-	y: number;
-	type: "full" | "half";
-	built: boolean;
-	builtDuringStrideNr?: number;
-}
-
-function generateStretcherBond(nRows: number): Brick[] {
-	const bricks: Brick[] = [];
-	for (let row = 0; row < nRows; row++) {
-		const isOdd = row % 2 === 1;
-		let x = 0;
-		let y = row * COURSE_HEIGHT;
-
-		if (isOdd) {
-			bricks.push({ type: "half", x, y, built: false });
-			x += HALF_BRICK_WIDTH + HEAD_JOINT;
-		}
-
-		while (x + FULL_BRICK_WIDTH <= WALL_WIDTH) {
-			bricks.push({ type: "full", x, y, built: false });
-			x += FULL_BRICK_WIDTH + HEAD_JOINT;
-		}
-		if (x <= WALL_WIDTH - HALF_BRICK_WIDTH) {
-			bricks.push({ type: "half", x, y, built: false });
-			x += HALF_BRICK_WIDTH + HEAD_JOINT;
-		}
-	}
-	return bricks;
-}
-
-function generateWall(pattern: string): Brick[] {
-	const nRows = Math.floor(WALL_HEIGHT / COURSE_HEIGHT);
-
-	const generationFunctions: { [key: string]: (nRows: number) => Brick[] } = {
-		"stretcher": generateStretcherBond,
-	};
-
-	if (pattern in generationFunctions) {
-		const generationFunction = generationFunctions[pattern];
-		return generationFunction(nRows);
-	}
-
-	return [];
-}
-
-// source: https://medium.com/@winwardo/simple-non-repeating-colour-generation-6efc995832b8
-function getDistinctColor(index: number) {
-	const hue = (index * 137.508) % 360;
-	return `hsl(${hue}, 70 %, 55 %)`;
-}
 
 const App: React.FC = () => {
 	const [bricks, setBricks] = useState<Brick[]>([]);
@@ -78,6 +23,14 @@ const App: React.FC = () => {
 	const [showStats, setShowStats] = useState(false);
 	const [robotDistanceTravelled, setRobotDistanceTravelled] = useState(0);
 	const [useDistinctStrideColors, setUseDistinctStrideColors] = useState(false);
+	const [showRobot, setShowRobot] = useState(true);
+	const [showEnvelope, setShowEnvelope] = useState(true);
+	const [showStrideLabels, setShowStrideLabels] = useState(false);
+	const [pixelsPerMM, setPixelsPerMM] = useState(0.25);
+	const [isEditingRobotX, setIsEditingRobotX] = useState(false);
+	const [isEditingRobotY, setIsEditingRobotY] = useState(false);
+	const [showBuiltToast, setShowBuiltToast] = useState(false);
+	const [pattern, setPattern] = useState("stretcher");
 
 
 
@@ -95,26 +48,22 @@ const App: React.FC = () => {
 	function brickCanBeBuilt(brick: Brick, all: Brick[]): boolean {
 		if (brick.y === 0) return true;
 		const leftX = brick.x;
-		const rightX =
-			brick.x +
-			(brick.type === "full" ? FULL_BRICK_WIDTH : HALF_BRICK_WIDTH);
+		const rightX = brick.x + brick.width;
 		const belowY = brick.y - (BRICK_HEIGHT + BED_JOINT);
 
 		const isSupported = (xEdge: number) =>
 			all.some((b) => {
 				if (!b.built || b.y !== belowY) return false;
-				const w = b.type === "full" ? FULL_BRICK_WIDTH : HALF_BRICK_WIDTH;
-				return b.x <= xEdge && b.x + w >= xEdge;
+				return b.x <= xEdge && b.x + b.width >= xEdge;
 			});
 
 		return isSupported(leftX) && isSupported(rightX);
 	}
 
 	function fitsWithinRobotWindow(brick: Brick, r: { x: number; y: number }) {
-		const brickWidth = brick.type === "full" ? FULL_BRICK_WIDTH : HALF_BRICK_WIDTH;
 		return (
 			brick.x >= r.x - ENVELOPE_WIDTH / 2 &&
-			brick.x + brickWidth <= r.x + ENVELOPE_WIDTH / 2 &&
+			brick.x + brick.width <= r.x + ENVELOPE_WIDTH / 2 &&
 			brick.y >= r.y - ENVELOPE_HEIGHT / 2 &&
 			brick.y + BRICK_HEIGHT <= r.y + ENVELOPE_HEIGHT / 2
 		);
@@ -125,8 +74,34 @@ const App: React.FC = () => {
 		return bricksRef.current.filter((b) => b.y === courseY);
 	}
 
-	function calculateNewRobotPosition(r: { x: number; y: number }) {
-		// find the lowest completed course
+	// from a given robot position, calculate how many bricks can be built
+	function countBuildableFromPosition(bricksArray: Brick[], robotPosition: { x: number; y: number }): number {
+		// copy array
+		let workingBricks = bricksArray.map(b => ({ ...b }));
+		let count = 0;
+
+		while (true) {
+			const unbuilt = workingBricks.filter((b) => !b.built);
+			if (!unbuilt.length) break;
+
+			const inWindow = unbuilt.filter((b) => fitsWithinRobotWindow(b, robotPosition));
+			const buildable = inWindow.filter((b) => brickCanBeBuilt(b, workingBricks));
+
+			if (buildable.length === 0) {
+				break;
+			}
+
+			// build the first buildable brick
+			const nextBrick = buildable[0];
+			workingBricks = workingBricks.map((b) => b == nextBrick ? { ...b, built: true } : b);
+			count++;
+		}
+
+		return count;
+	}
+
+	function calculateNewRobotPosition(robotPos: { x: number; y: number }) {
+		// find the lowest uncompleted course
 		const nRows = Math.floor(WALL_HEIGHT / COURSE_HEIGHT);
 		let course = 0;
 		let courseBricks: Brick[] = [];
@@ -138,76 +113,69 @@ const App: React.FC = () => {
 			}
 		}
 
-		// the robot should move to whichever unbuilt brick in the uncompleted course is closest
-		// but then, to cover more bricks, it should center its envelope over the middle of that course
-		// unless that would push it out of bounds of the wall
-		// or if that does not increase coverage of unbuilt bricks
+		// now we know we want the robot to be on the y position where the envelope just contains this course
+		const newY = Math.min(course * COURSE_HEIGHT + ENVELOPE_HEIGHT / 2, WALL_HEIGHT - ENVELOPE_HEIGHT / 2);
+		// now, we're going to move the envelope and try to maximize the number of bricks the robot would
+		// be able to build in a single stride
 
-		const unbuiltBricks = courseBricks.filter((b) => !b.built);
 
-		const targetBrick = unbuiltBricks.reduce((closest, b) => {
-			const brickCenterX =
-				b.x +
-				(b.type === "full" ? FULL_BRICK_WIDTH : HALF_BRICK_WIDTH) / 2;
-			const distClosest = Math.abs(
-				(closest.x +
-					(closest.type === "full"
-						? FULL_BRICK_WIDTH
-						: HALF_BRICK_WIDTH) /
-					2) -
-				r.x
-			);
-			const distB = Math.abs(brickCenterX - r.x);
-			return distB < distClosest ? b : closest;
-		}, unbuiltBricks[0]);
+		// we put the envelope's left edge at each brick's left edge, and it's right edge at each brick's right edge, (skipping duplicates of course)
+		// and see which position would allow the most bricks to be built
+		let bestX = robotPos.x;
+		let maxBuildable = -1;
 
-		const targetBrickW = targetBrick.type === "full" ? FULL_BRICK_WIDTH : HALF_BRICK_WIDTH;
-		const targetX = targetBrick.x + targetBrickW / 2;
+		let candidateXPositions = bricksRef.current.flatMap((b) => [b.x + ENVELOPE_WIDTH / 2, b.x + b.width - ENVELOPE_WIDTH / 2]);
+		candidateXPositions = candidateXPositions.filter((x) => x - ENVELOPE_WIDTH / 2 >= 0 && x + ENVELOPE_WIDTH / 2 <= WALL_WIDTH); // no need for envelopes that partly hang off the wall
+		candidateXPositions = candidateXPositions.filter((x, index) => candidateXPositions.indexOf(x) === index); // uniques
 
-		// center envelope over targetX, but keep within wall bounds
-		let newX = targetX;
-		if (newX - ENVELOPE_WIDTH / 2 < 0) {
-			newX = ENVELOPE_WIDTH / 2;
-		} else if (newX + ENVELOPE_WIDTH / 2 > WALL_WIDTH) {
-			newX = WALL_WIDTH - ENVELOPE_WIDTH / 2;
+		for (let i = 0; i < candidateXPositions.length; i++) {
+			const buildableCount = countBuildableFromPosition(bricksRef.current, { x: candidateXPositions[i], y: newY });
+
+
+			if (buildableCount === maxBuildable) {
+				// choose the position closest to the robot
+				const currentDistance = Math.abs(bestX - robotPos.x);
+				const newDistance = Math.abs(candidateXPositions[i] - robotPos.x);
+				if (newDistance < currentDistance) {
+					bestX = candidateXPositions[i];
+				}
+			}
+			if (buildableCount > maxBuildable) {
+				maxBuildable = buildableCount;
+				bestX = candidateXPositions[i];
+			}
 		}
 
-		let newY = course * COURSE_HEIGHT + ENVELOPE_HEIGHT / 2;
-		if (newY - ENVELOPE_HEIGHT / 2 < 0) {
-			newY = ENVELOPE_HEIGHT / 2;
-		}
-		if (newY + ENVELOPE_HEIGHT / 2 > WALL_HEIGHT) {
-			newY = WALL_HEIGHT - ENVELOPE_HEIGHT / 2;
-		}
-
-		return { x: newX, y: newY };
+		return { x: bestX, y: newY };
 	}
 
 	async function buildNextBrick() {
 		if (busyRef.current) return;
 		busyRef.current = true;
 
-		const all = bricksRef.current;
-		const r = robotRef.current;
-		const unbuilt = all.filter((b) => !b.built);
+		const allBricks = bricksRef.current;
+		const robotLoc = robotRef.current;
+		const unbuilt = allBricks.filter((b) => !b.built);
 		if (!unbuilt.length) {
 			busyRef.current = false;
+			setShowBuiltToast(true);
+			setTimeout(() => setShowBuiltToast(false), 1500);
 			return;
 		}
 
-		const inWindow = unbuilt.filter((b) => fitsWithinRobotWindow(b, r));
-		const buildable = inWindow.filter((b) => brickCanBeBuilt(b, all));
+		const inWindow = unbuilt.filter((b) => fitsWithinRobotWindow(b, robotLoc));
+		const buildable = inWindow.filter((b) => brickCanBeBuilt(b, allBricks));
 
 		if (buildable.length) {
 			const next = buildable[0];
 			const strideNr = strideCountRef.current + 1;
-			const updated = all.map((b) =>
+			const updated = allBricks.map((b) =>
 				b === next ? { ...b, built: true, builtDuringStrideNr: strideNr } : b
 			);
 			bricksRef.current = updated;
 			setBricks(updated);
 		} else {
-			const newRobotPos = calculateNewRobotPosition(r);
+			const newRobotPos = calculateNewRobotPosition(robotLoc);
 			const oldRobotX = robotRef.current.x;
 			const oldRobotY = robotRef.current.y;
 			robotRef.current = newRobotPos;
@@ -221,7 +189,7 @@ const App: React.FC = () => {
 			setRobotDistanceTravelled((d) => d + distance);
 		}
 
-		await new Promise((res) => setTimeout(res, 50));
+		await new Promise((res) => setTimeout(res, 30)); // small delay for animation
 		busyRef.current = false;
 	}
 
@@ -230,10 +198,11 @@ const App: React.FC = () => {
 		while (bricksRef.current.some((b) => !b.built)) {
 			await buildNextBrick();
 		}
+		setIsBuildingEntireWall(false);
 	};
 
 	useEffect(() => {
-		const handler = (e: KeyboardEvent) => {
+		const keydownHandler = (e: KeyboardEvent) => {
 			if (e.key === "Enter") {
 				if (e.shiftKey) {
 					buildEntireWall();
@@ -246,13 +215,31 @@ const App: React.FC = () => {
 				setShowStats((s) => !s);
 			}
 		};
-		window.addEventListener("keydown", handler);
-		return () => window.removeEventListener("keydown", handler);
+		window.addEventListener("keydown", keydownHandler);
+		return () => window.removeEventListener("keydown", keydownHandler);
 	}, []);
 
 	useEffect(() => {
-		// initialize wall
-		setBricks(generateWall("stretcher"));
+		setBricks(generateWall(pattern)); // initialize wall
+		setRobot({ x: ENVELOPE_WIDTH / 2, y: ENVELOPE_HEIGHT / 2 }); // reset robot position
+		setStrideCount(0); // reset stride count
+		setRobotDistanceTravelled(0); // reset distance
+	}, [pattern]);
+
+	useEffect(() => {
+		const handleResize = () => {
+			// make the wall at least 300px but no more than the window height minus a margin (240px)
+			// for the header
+			let wallHeightInPx = Math.max(innerHeight - 280, 300);
+
+			// also make sure the wall is not wider than the window width minus a margin (40px)
+			wallHeightInPx = Math.min(wallHeightInPx, (innerWidth - 40) * (WALL_HEIGHT / WALL_WIDTH));
+
+			setPixelsPerMM(wallHeightInPx / WALL_HEIGHT);
+		};
+		handleResize();
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
 
@@ -262,148 +249,53 @@ const App: React.FC = () => {
 				<h1>Stan's Wall Visualizer</h1>
 			</header>
 			<div id="instructions">
-				<p>
+				<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
 					Press <kbd>Enter</kbd> to build the next brick.
 				</p>
-				<p id="entireWallHint">(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)</p>
+				<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
+					(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
+				</p>
 			</div>
 
-			<div
-				id="wall"
-				style={{
-					width: WALL_WIDTH * PIXELS_PER_MM,
-					height: WALL_HEIGHT * PIXELS_PER_MM,
-					position: "relative",
-				}}
-			>
-				{bricks.map((brick, index) => {
-					let bgColour = "#fffdf3";
-					let overlay = null;
+			<WallVisualization
+				bricks={bricks}
+				robot={robot}
+				pixelsPerMM={pixelsPerMM}
+				strideCount={strideCount}
+				useDistinctStrideColors={useDistinctStrideColors}
+				showStrideLabels={showStrideLabels}
+				showRobot={showRobot}
+				showEnvelope={showEnvelope}
+			/>
 
-					if (brick.built) {
-						const strideNr = brick.builtDuringStrideNr ?? 0;
+			<InfoBox
+				showStats={showStats}
+				setShowStats={setShowStats}
+				strideCount={strideCount}
+				bricks={bricks}
+				robot={robot}
+				setRobot={setRobot}
+				robotDistanceTravelled={robotDistanceTravelled}
+				useDistinctStrideColors={useDistinctStrideColors}
+				setUseDistinctStrideColors={setUseDistinctStrideColors}
+				showStrideLabels={showStrideLabels}
+				setShowStrideLabels={setShowStrideLabels}
+				showRobot={showRobot}
+				setShowRobot={setShowRobot}
+				showEnvelope={showEnvelope}
+				setShowEnvelope={setShowEnvelope}
+				isEditingRobotX={isEditingRobotX}
+				setIsEditingRobotX={setIsEditingRobotX}
+				isEditingRobotY={isEditingRobotY}
+				setIsEditingRobotY={setIsEditingRobotY}
+				pattern={pattern}
+				setPattern={setPattern}
+			/>
 
-						if (useDistinctStrideColors) {
-							bgColour = getDistinctColor(strideNr);
-						} else {
-							const strideAge = strideCount - strideNr;
-							const lightness = Math.max(35, 70 - strideAge * 8);
-							bgColour = `hsl(24, 80%, ${lightness}%)`;
-						}
-
-						// semi-transparent stride label overlay
-						overlay = (
-							<div
-								style={{
-									position: "absolute",
-									inset: 0,
-									backgroundColor: "rgba(0,0,0,0.3)",
-									color: "white",
-									fontSize: "10px",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									opacity: 0.6,
-									pointerEvents: "none",
-								}}
-							>
-								{brick.builtDuringStrideNr}
-							</div>
-						);
-					}
-
-					return (
-						<div
-							key={index}
-							className="absolute rounded-sm transition-all duration-300 box-border border border-dashed border-1"
-							style={{
-								width:
-									(brick.type === "full" ? FULL_BRICK_WIDTH : HALF_BRICK_WIDTH) *
-									PIXELS_PER_MM,
-								height: BRICK_HEIGHT * PIXELS_PER_MM,
-								left: brick.x * PIXELS_PER_MM,
-								bottom: brick.y * PIXELS_PER_MM,
-								borderColor: brick.built ? bgColour : "rgba(0,0,0,0.1)",
-								backgroundColor: bgColour,
-								position: "absolute",
-							}}
-						>
-							{overlay}
-						</div>
-					);
-				})}
-
-
-				<div
-					id="envelope"
-					style={{
-						width: ENVELOPE_WIDTH * PIXELS_PER_MM,
-						height: ENVELOPE_HEIGHT * PIXELS_PER_MM,
-						left: (robot.x - ENVELOPE_WIDTH / 2) * PIXELS_PER_MM,
-						bottom: (robot.y - ENVELOPE_HEIGHT / 2) * PIXELS_PER_MM,
-					}}
-				/>
-
-				<img
-					id="robot"
-					style={{
-						left: robot.x * PIXELS_PER_MM,
-						bottom: robot.y * PIXELS_PER_MM,
-					}}
-					src="/robot-icon.png"
-				/>
-			</div>
-
-			<div id="infoBox">
-				{showStats ? (
-					<div>
-						<p style={{ margin: 0, fontWeight: 600, fontSize: "16px" }}>Statistics / Settings</p>
-						<p style={{ margin: 0 }}>Number of strides: {strideCount}</p>
-						<p style={{ margin: 0 }}>Bricks built: {bricks.filter((b) => b.built).length} / {bricks.length}</p>
-						<p style={{ margin: 0 }}>Bricks per stride: {strideCount > 0 ? (bricks.filter((b) => b.built).length / strideCount).toFixed(2) : "0"}</p>
-						<p style={{ margin: 0 }}>Robot position: ({robot.x.toFixed(0)}mm, {robot.y.toFixed(0)}mm)</p>
-						<p style={{ margin: 0 }}>Robot distance travelled: {(robotDistanceTravelled / 100).toFixed(2)}m</p>
-
-						<label style={{ display: "block", marginTop: "8px" }}>
-							<input
-								type="checkbox"
-								checked={useDistinctStrideColors}
-								onChange={(e) => setUseDistinctStrideColors(e.target.checked)}
-								style={{ marginRight: "6px" }}
-							/>
-							Use distinct colour per stride
-						</label>
-
-
-						<p style={{ marginTop: "12px", fontStyle: "italic", color: "#666" }}>
-							Press <kbd>s</kbd> to hide stats / settings.
-						</p>
-					</div>
-				) : (
-					<div>
-						<p style={{ margin: 0 }}>
-							Assessment{" "}
-							<a href="https://monumentalco.notion.site/SWE-TH3-Wall-visualizer-6d269ab0f1a342959a2ad02dc0b121d2" target="_blank" style={{ fontWeight: 600, textDecoration: "none" }}>
-								SWE TH3: Wall Visualizer
-							</a>
-							{" "}for{" "}
-							<a href="https://www.monumental.co" target="_blank" style={{ textDecoration: "none" }}>
-								Monumental
-							</a>
-							{" "}by{" "}
-							<a href="https://stanvanbaarsen.nl" target="_blank" style={{ color: "#0c65ea", fontWeight: 600, textDecoration: "none" }}>
-								Stan van Baarsen
-							</a>
-							.
-						</p>
-						<p style={{ marginTop: "12px", fontStyle: "italic", color: "#666" }}>
-							Press <kbd>s</kbd> to show stats / settings.
-						</p>
-					</div>
-				)}
+			<div className={showBuiltToast ? "visible toast" : "toast"}>
+				All bricks have been built!
 			</div>
 		</div>
-
 	);
 };
 
