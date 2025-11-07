@@ -1,6 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+	font-family: "Winner Sans";
+	src:
+		url("WinnerSans-Bold.woff2") format("woff2"),
+		url("WinnerSans-Bold.woff") format("woff");
+	font-weight: bold;
+	font-style: normal;
+	font-display: swap;
+}
+
 
 html,
 body {
@@ -15,15 +27,16 @@ body {
 	justify-content: center;
 	align-items: flex-end;
 	position: relative;
-	background: linear-gradient(to top, #6fb96f 0% 25%, #a0e4ff 25% 100%);
+	background: linear-gradient(to top, #6fb96f 0% 30%, #a0e4ff 25% 100%);
 	transition: background 1.5s ease-in-out;
 }
 
+/* sun: */
 body::after {
 	content: "";
 	position: fixed;
 	top: 60px;
-	right: 80px;
+	left: 80px;
 	width: 120px;
 	height: 120px;
 	border-radius: 50%;
@@ -38,7 +51,7 @@ body::after {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 12px;
+	gap: 0px;
 	padding-bottom: 5vh;
 	background: none;
 	box-shadow: none;
@@ -46,18 +59,19 @@ body::after {
 }
 
 #main header h1 {
+	font-family: 'Winner Sans', Roboto, Arial, sans-serif;
 	font-size: max(4.5vw, 3rem);
 	margin: 0;
 	font-weight: 800;
 	color: #333;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.06em;
 }
 
 #instructions {
 	text-align: center;
 	color: #555;
 	font-size: 1rem;
-	margin-bottom: 8px;
+	margin-bottom: 18px;
 }
 
 #instructions kbd {
@@ -84,6 +98,7 @@ body::after {
 
 #wall {
 	background: rgba(255, 255, 255, 0.8);
+	margin-bottom: 20px;
 }
 
 #robot {
@@ -114,8 +129,8 @@ body::after {
 	right: 20px;
 	bottom: 20px;
 	background-color: rgba(255, 253, 243, 0.6);
-	backdrop-filter: blur(6px);
 	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
 	border-radius: 12px;
 	padding: 12px 18px;
 	font-size: 0.85rem;
@@ -140,18 +155,16 @@ body::after {
 	box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
 
-
 /* hide number arrow dials (source: https://stackoverflow.com/questions/3790935/can-i-hide-the-html5-number-input-s-spin-box) */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+	-webkit-appearance: none;
+	margin: 0;
 }
-input[type=number] {
-    -moz-appearance:textfield;
-	appearance:textfield;
+input[type="number"] {
+	-moz-appearance: textfield;
+	appearance: textfield;
 }
-
 
 div.toast {
 	bottom: 20px;
@@ -162,7 +175,7 @@ div.toast {
 	color: white;
 	padding: 12px 24px;
 	border-radius: 24px;
-	box-shadow: 0 2px 8px rgba(0,x 0, 0, 0.2);
+	box-shadow: 0 2px 8px rgba(0, x 0, 0, 0.2);
 	font-size: 1rem;
 	opacity: 0;
 	transition: opacity 0.5s ease-in-out;
@@ -170,4 +183,42 @@ div.toast {
 
 div.toast.visible {
 	opacity: 1;
+}
+
+
+div#creditsSign {
+	bottom: min(160px, 30vh);
+	left: 0px;
+	z-index: -1;
+	color: rgba(0,0,0,.92);
+	font-family: "Press Start 2P", Arial, Helvetica, sans-serif;
+	font-size: 10px;
+}
+
+div#creditsSign span {
+	left: 0px;
+	width: 100%;
+	white-space: nowrap;
+	transform: scaleX(0.72);
+}
+
+div#creditsSign a {
+	color: rgba(0,0,0,.92);
+	text-decoration: none;
+}
+
+div#creditsSign a:hover {
+	top: -1px;
+	position: relative;
+}
+
+img.crane {
+	position: fixed;
+	right: 40px;
+	bottom: 30vh;
+	width: min(18vw, 260px);
+	height: auto;
+	pointer-events: none;
+	object-fit: contain;
+	transform: scaleX(-1);
 }

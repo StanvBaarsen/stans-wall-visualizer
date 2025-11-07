@@ -8,7 +8,7 @@ import {
   type Brick,
 } from "./constants";
 
-interface WallVisualizationProps {
+interface WallProps {
   bricks: Brick[];
   robot: { x: number; y: number };
   pixelsPerMM: number;
@@ -25,7 +25,7 @@ function getDistinctColor(index: number) {
   return `hsl(${hue}, 70%, 55%)`;
 }
 
-export const WallVisualization: React.FC<WallVisualizationProps> = ({
+export const Wall: React.FC<WallProps> = ({
   bricks,
   robot,
   pixelsPerMM,

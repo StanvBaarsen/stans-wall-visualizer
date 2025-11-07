@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { InfoBox } from "./InfoBox";
-import { WallVisualization } from "./WallVisualization";
+import { CreditsSign } from "./CreditsSign.tsx";
+import { Wall } from "./Wall";
 import {
 	BRICK_HEIGHT,
 	BED_JOINT,
@@ -20,7 +21,6 @@ const App: React.FC = () => {
 	const [robot, setRobot] = useState<{ x: number; y: number }>({ x: ENVELOPE_WIDTH / 2, y: ENVELOPE_HEIGHT / 2 });
 	const [strideCount, setStrideCount] = useState(0);
 	const [isBuildingEntireWall, setIsBuildingEntireWall] = useState(false);
-	const [showStats, setShowStats] = useState(false);
 	const [robotDistanceTravelled, setRobotDistanceTravelled] = useState(0);
 	const [useDistinctStrideColors, setUseDistinctStrideColors] = useState(false);
 	const [showRobot, setShowRobot] = useState(true);
@@ -31,6 +31,7 @@ const App: React.FC = () => {
 	const [isEditingRobotY, setIsEditingRobotY] = useState(false);
 	const [showBuiltToast, setShowBuiltToast] = useState(false);
 	const [pattern, setPattern] = useState("stretcher");
+	const [showInfoBox, setShowInfoBox] = useState(true);
 
 
 
@@ -231,13 +232,13 @@ const App: React.FC = () => {
 			}
 
 			const keyboardActions: Record<string, () => void> = {
-				s: () => setShowStats((s) => !s),
 				escape: () => setIsBuildingEntireWall(false),
 				c: () => setUseDistinctStrideColors((v) => !v),
 				n: () => setShowStrideLabels((v) => !v),
 				i: () => setShowRobot((v) => !v),
 				e: () => setShowEnvelope((v) => !v),
 				r: () => resetRef.current(),
+				s: () => setShowInfoBox((v) => !v),
 				p: () => {
 					const select = patternSelectRef.current;
 					if (!select) return;
@@ -263,9 +264,8 @@ const App: React.FC = () => {
 
 	useEffect(() => {
 		const handleResize = () => {
-			// make the wall at least 300px but no more than the window height minus a margin (240px)
-			// for the header
-			let wallHeightInPx = Math.max(innerHeight - 280, 300);
+			// make the wall between 300 and 600px, but no more than the window height minus a margin (240px) for the header
+			let wallHeightInPx = Math.min(Math.max(innerHeight - 320, 300), 600);
 
 			// also make sure the wall is not wider than the window width minus a margin (40px)
 			wallHeightInPx = Math.min(wallHeightInPx, (innerWidth - 40) * (WALL_HEIGHT / WALL_WIDTH));
@@ -279,73 +279,103 @@ const App: React.FC = () => {
 
 
 	return (
-		<div id="main">
-			<header>
-				<h1>Stan's Wall Visualizer</h1>
-			</header>
-			<div id="instructions">
-				{isBuildingEntireWall ?
-					<>
-						<p>
-							Building the entire wall...
-						</p>
-						<p id="entireWallHint" onClick={() => setIsBuildingEntireWall(false)} style={{ cursor: "pointer" }}>
-							(press <kbd>Esc</kbd> to cancel)
-						</p>
-					</>
+		<>
+			<div id="main">
+				<header>
+					<h1>Stan's Wall Visualizer</h1>
+				</header>
+				<div id="instructions">
+					{isBuildingEntireWall ?
+						<>
+							<p>
+								Building the entire wall...
+							</p>
+							<p id="entireWallHint" onClick={() => setIsBuildingEntireWall(false)} style={{ cursor: "pointer" }}>
+								(press <kbd>Esc</kbd> to cancel)
+							</p>
+						</>
+						:
+						<>
+							<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
+								Press <kbd>Enter</kbd> to build the next brick.
+							</p>
+							<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
+								(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
+							</p>
+						</>
+					}
+				</div >
+
+				<Wall
+					bricks={bricks}
+					robot={robot}
+					pixelsPerMM={pixelsPerMM}
+					strideCount={strideCount}
+					useDistinctStrideColors={useDistinctStrideColors}
+					showStrideLabels={showStrideLabels}
+					showRobot={showRobot}
+					showEnvelope={showEnvelope}
+				/>
+
+
+				{showInfoBox ?
+					<InfoBox
+						strideCount={strideCount}
+						bricks={bricks}
+						robot={robot}
+						setRobot={setRobot}
+						robotDistanceTravelled={robotDistanceTravelled}
+						useDistinctStrideColors={useDistinctStrideColors}
+						setUseDistinctStrideColors={setUseDistinctStrideColors}
+						showStrideLabels={showStrideLabels}
+						setShowStrideLabels={setShowStrideLabels}
+						showRobot={showRobot}
+						setShowRobot={setShowRobot}
+						showEnvelope={showEnvelope}
+						setShowEnvelope={setShowEnvelope}
+						isEditingRobotX={isEditingRobotX}
+						setIsEditingRobotX={setIsEditingRobotX}
+						isEditingRobotY={isEditingRobotY}
+						setIsEditingRobotY={setIsEditingRobotY}
+						pattern={pattern}
+						setPattern={setPattern}
+						patternSelectRef={patternSelectRef}
+						reset={reset}
+						hideInfoBox={() => setShowInfoBox(false)}
+					/>
 					:
-					<>
-						<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
-							Press <kbd>Enter</kbd> to build the next brick.
-						</p>
-						<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
-							(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
-						</p>
-					</>
+
+
+					<button
+						onClick={() => setShowInfoBox(true)}
+						style={{
+							position: "fixed",
+							bottom: 32,
+							right: 38,
+							padding: "6px 12px",
+							backgroundColor: "#eee",
+							border: "1px solid #ccc",
+							borderRadius: "4px",
+							cursor: "pointer",
+						}}
+					>
+						Show <span style={{ textDecoration: "underline" }}>s</span>ettings
+					</button>
 				}
+
+				<CreditsSign />
+
+				<div className={showBuiltToast ? "visible toast" : "toast"}>
+					All bricks have been built!
+				</div>
 			</div >
-
-			<WallVisualization
-				bricks={bricks}
-				robot={robot}
-				pixelsPerMM={pixelsPerMM}
-				strideCount={strideCount}
-				useDistinctStrideColors={useDistinctStrideColors}
-				showStrideLabels={showStrideLabels}
-				showRobot={showRobot}
-				showEnvelope={showEnvelope}
+			<img
+				className="crane"
+				src="/crane.png"
+				alt="Construction crane watching over the wall"
+				loading="lazy"
 			/>
-
-			<InfoBox
-				showStats={showStats}
-				setShowStats={setShowStats}
-				strideCount={strideCount}
-				bricks={bricks}
-				robot={robot}
-				setRobot={setRobot}
-				robotDistanceTravelled={robotDistanceTravelled}
-				useDistinctStrideColors={useDistinctStrideColors}
-				setUseDistinctStrideColors={setUseDistinctStrideColors}
-				showStrideLabels={showStrideLabels}
-				setShowStrideLabels={setShowStrideLabels}
-				showRobot={showRobot}
-				setShowRobot={setShowRobot}
-				showEnvelope={showEnvelope}
-				setShowEnvelope={setShowEnvelope}
-				isEditingRobotX={isEditingRobotX}
-				setIsEditingRobotX={setIsEditingRobotX}
-				isEditingRobotY={isEditingRobotY}
-				setIsEditingRobotY={setIsEditingRobotY}
-				pattern={pattern}
-				setPattern={setPattern}
-				patternSelectRef={patternSelectRef}
-				reset={reset}
-			/>
-
-			<div className={showBuiltToast ? "visible toast" : "toast"}>
-				All bricks have been built!
-			</div>
-		</div >
+		</>
 	);
 };
 
