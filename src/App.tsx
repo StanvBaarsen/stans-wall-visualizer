@@ -38,6 +38,7 @@ const App: React.FC = () => {
 	const robotRef = useRef(robot);
 	const strideCountRef = useRef(strideCount);
 	const isBuildingEntireWallRef = useRef(isBuildingEntireWall);
+	const patternSelectRef = useRef<HTMLSelectElement | null>(null);
 	useEffect(() => { bricksRef.current = bricks; }, [bricks]);
 	useEffect(() => { robotRef.current = robot; }, [robot]);
 	useEffect(() => { strideCountRef.current = strideCount; }, [strideCount]);
@@ -45,16 +46,30 @@ const App: React.FC = () => {
 
 	const busyRef = useRef(false);
 
+
+	const reset = () => {
+		setIsBuildingEntireWall(false);
+		setBricks(generateWall(pattern));
+		setRobot({ x: ENVELOPE_WIDTH / 2, y: ENVELOPE_HEIGHT / 2 });
+		setStrideCount(0);
+		setRobotDistanceTravelled(0);
+	};
+
+	const resetRef = useRef<() => void>(reset);
+	useEffect(() => {
+		resetRef.current = reset;
+	}, [reset]);
+
 	function brickCanBeBuilt(brick: Brick, all: Brick[]): boolean {
 		if (brick.y === 0) return true;
 		const leftX = brick.x;
-		const rightX = brick.x + brick.width;
+		const rightX = brick.x + brick.length;
 		const belowY = brick.y - (BRICK_HEIGHT + BED_JOINT);
 
 		const isSupported = (xEdge: number) =>
 			all.some((b) => {
 				if (!b.built || b.y !== belowY) return false;
-				return b.x <= xEdge && b.x + b.width >= xEdge;
+				return b.x <= xEdge && b.x + b.length >= xEdge;
 			});
 
 		return isSupported(leftX) && isSupported(rightX);
@@ -63,7 +78,7 @@ const App: React.FC = () => {
 	function fitsWithinRobotWindow(brick: Brick, r: { x: number; y: number }) {
 		return (
 			brick.x >= r.x - ENVELOPE_WIDTH / 2 &&
-			brick.x + brick.width <= r.x + ENVELOPE_WIDTH / 2 &&
+			brick.x + brick.length <= r.x + ENVELOPE_WIDTH / 2 &&
 			brick.y >= r.y - ENVELOPE_HEIGHT / 2 &&
 			brick.y + BRICK_HEIGHT <= r.y + ENVELOPE_HEIGHT / 2
 		);
@@ -124,8 +139,7 @@ const App: React.FC = () => {
 		let bestX = robotPos.x;
 		let maxBuildable = -1;
 
-		let candidateXPositions = bricksRef.current.flatMap((b) => [b.x + ENVELOPE_WIDTH / 2, b.x + b.width - ENVELOPE_WIDTH / 2]);
-		candidateXPositions = candidateXPositions.filter((x) => x - ENVELOPE_WIDTH / 2 >= 0 && x + ENVELOPE_WIDTH / 2 <= WALL_WIDTH); // no need for envelopes that partly hang off the wall
+		let candidateXPositions = bricksRef.current.flatMap((b) => [b.x + ENVELOPE_WIDTH / 2, b.x + b.length - ENVELOPE_WIDTH / 2]);
 		candidateXPositions = candidateXPositions.filter((x, index) => candidateXPositions.indexOf(x) === index); // uniques
 
 		for (let i = 0; i < candidateXPositions.length; i++) {
@@ -178,15 +192,18 @@ const App: React.FC = () => {
 			const newRobotPos = calculateNewRobotPosition(robotLoc);
 			const oldRobotX = robotRef.current.x;
 			const oldRobotY = robotRef.current.y;
-			robotRef.current = newRobotPos;
-			setRobot(newRobotPos);
-			setStrideCount((c) => c + 1);
 
-			const distance = Math.sqrt(
-				Math.pow(newRobotPos.x - oldRobotX, 2) +
-				Math.pow(newRobotPos.y - oldRobotY, 2)
-			);
-			setRobotDistanceTravelled((d) => d + distance);
+			if (!(newRobotPos.x === robotLoc.x && newRobotPos.y === robotLoc.y)) {
+				robotRef.current = newRobotPos;
+				setRobot(newRobotPos);
+				setStrideCount((c) => c + 1);
+
+				const distance = Math.sqrt(
+					Math.pow(newRobotPos.x - oldRobotX, 2) +
+					Math.pow(newRobotPos.y - oldRobotY, 2)
+				);
+				setRobotDistanceTravelled((d) => d + distance);
+			}
 		}
 
 		await new Promise((res) => setTimeout(res, 30)); // small delay for animation
@@ -195,7 +212,9 @@ const App: React.FC = () => {
 
 	const buildEntireWall = async () => {
 		setIsBuildingEntireWall(true);
+		isBuildingEntireWallRef.current = true;
 		while (bricksRef.current.some((b) => !b.built)) {
+			if (!isBuildingEntireWallRef.current) break;
 			await buildNextBrick();
 		}
 		setIsBuildingEntireWall(false);
@@ -211,19 +230,35 @@ const App: React.FC = () => {
 				}
 			}
 
-			if (e.key === "s" || e.key === "S") {
-				setShowStats((s) => !s);
+			const keyboardActions: Record<string, () => void> = {
+				s: () => setShowStats((s) => !s),
+				escape: () => setIsBuildingEntireWall(false),
+				c: () => setUseDistinctStrideColors((v) => !v),
+				n: () => setShowStrideLabels((v) => !v),
+				i: () => setShowRobot((v) => !v),
+				e: () => setShowEnvelope((v) => !v),
+				r: () => resetRef.current(),
+				p: () => {
+					const select = patternSelectRef.current;
+					if (!select) return;
+					const selectable = select as HTMLSelectElement & { showPicker?: () => void };
+					if (typeof selectable.showPicker === "function") {
+						selectable.showPicker();
+						return;
+					}
+				},
 			}
+
+			const action = keyboardActions[e.key.toLowerCase()];
+			if (action) action();
+
 		};
 		window.addEventListener("keydown", keydownHandler);
 		return () => window.removeEventListener("keydown", keydownHandler);
 	}, []);
 
 	useEffect(() => {
-		setBricks(generateWall(pattern)); // initialize wall
-		setRobot({ x: ENVELOPE_WIDTH / 2, y: ENVELOPE_HEIGHT / 2 }); // reset robot position
-		setStrideCount(0); // reset stride count
-		setRobotDistanceTravelled(0); // reset distance
+		reset();
 	}, [pattern]);
 
 	useEffect(() => {
@@ -249,13 +284,26 @@ const App: React.FC = () => {
 				<h1>Stan's Wall Visualizer</h1>
 			</header>
 			<div id="instructions">
-				<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
-					Press <kbd>Enter</kbd> to build the next brick.
-				</p>
-				<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
-					(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
-				</p>
-			</div>
+				{isBuildingEntireWall ?
+					<>
+						<p>
+							Building the entire wall...
+						</p>
+						<p id="entireWallHint" onClick={() => setIsBuildingEntireWall(false)} style={{ cursor: "pointer" }}>
+							(press <kbd>Esc</kbd> to cancel)
+						</p>
+					</>
+					:
+					<>
+						<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
+							Press <kbd>Enter</kbd> to build the next brick.
+						</p>
+						<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
+							(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
+						</p>
+					</>
+				}
+			</div >
 
 			<WallVisualization
 				bricks={bricks}
@@ -290,12 +338,14 @@ const App: React.FC = () => {
 				setIsEditingRobotY={setIsEditingRobotY}
 				pattern={pattern}
 				setPattern={setPattern}
+				patternSelectRef={patternSelectRef}
+				reset={reset}
 			/>
 
 			<div className={showBuiltToast ? "visible toast" : "toast"}>
 				All bricks have been built!
 			</div>
-		</div>
+		</div >
 	);
 };
 

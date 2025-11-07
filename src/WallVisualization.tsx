@@ -68,7 +68,7 @@ export const WallVisualization: React.FC<WallVisualizationProps> = ({
               key={index}
               className="absolute rounded-sm transition-all duration-300 box-border border border-dashed border-1"
               style={{
-                width: brick.width * pixelsPerMM,
+                width: brick.length * pixelsPerMM,
                 height: BRICK_HEIGHT * pixelsPerMM,
                 left: brick.x * pixelsPerMM,
                 bottom: brick.y * pixelsPerMM,
