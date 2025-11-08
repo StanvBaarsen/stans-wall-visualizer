@@ -17,7 +17,6 @@ import { generateWall } from "./wallGenerators.ts";
 
 const App: React.FC = () => {
 	const [bricks, setBricks] = useState<Brick[]>([]);
-	// initial robot position should have envelope's bottom-left corner at (0,0)
 	const [robot, setRobot] = useState<{ x: number; y: number }>({ x: ENVELOPE_WIDTH / 2, y: ENVELOPE_HEIGHT / 2 });
 	const [strideCount, setStrideCount] = useState(0);
 	const [isBuildingEntireWall, setIsBuildingEntireWall] = useState(false);
@@ -31,10 +30,10 @@ const App: React.FC = () => {
 	const [isEditingRobotY, setIsEditingRobotY] = useState(false);
 	const [showBuiltToast, setShowBuiltToast] = useState(false);
 	const [pattern, setPattern] = useState("stretcher");
-	const [showInfoBox, setShowInfoBox] = useState(true);
+	const [showInfoBox, setShowInfoBox] = useState(innerWidth > 1100);
 
 
-
+	const busyRef = useRef(false); // is currently building a brick
 	const bricksRef = useRef<Brick[]>([]);
 	const robotRef = useRef(robot);
 	const strideCountRef = useRef(strideCount);
@@ -45,13 +44,12 @@ const App: React.FC = () => {
 	useEffect(() => { strideCountRef.current = strideCount; }, [strideCount]);
 	useEffect(() => { isBuildingEntireWallRef.current = isBuildingEntireWall; }, [isBuildingEntireWall]);
 
-	const busyRef = useRef(false);
-
 
 	const reset = () => {
 		setIsBuildingEntireWall(false);
-		setBricks(generateWall(pattern));
-		setRobot({ x: ENVELOPE_WIDTH / 2, y: ENVELOPE_HEIGHT / 2 });
+		const newWall = generateWall(pattern);
+		setBricks(newWall);
+		setRobot({ x: calculateNewRobotPosition(newWall).x, y: ENVELOPE_HEIGHT / 2 })
 		setStrideCount(0);
 		setRobotDistanceTravelled(0);
 	};
@@ -85,11 +83,6 @@ const App: React.FC = () => {
 		);
 	}
 
-	function getCourse(courseNumber: number): Brick[] {
-		const courseY = courseNumber * COURSE_HEIGHT;
-		return bricksRef.current.filter((b) => b.y === courseY);
-	}
-
 	// from a given robot position, calculate how many bricks can be built
 	function countBuildableFromPosition(bricksArray: Brick[], robotPosition: { x: number; y: number }): number {
 		// copy array
@@ -116,13 +109,13 @@ const App: React.FC = () => {
 		return count;
 	}
 
-	function calculateNewRobotPosition(robotPos: { x: number; y: number }) {
+	function calculateNewRobotPosition(wall?: Brick[]) {
+		if (!wall) wall = bricksRef.current
 		// find the lowest uncompleted course
 		const nRows = Math.floor(WALL_HEIGHT / COURSE_HEIGHT);
 		let course = 0;
-		let courseBricks: Brick[] = [];
 		for (; course < nRows; course++) {
-			courseBricks = getCourse(course);
+			let courseBricks = wall.filter((b) => b.y === course * COURSE_HEIGHT);
 			const allBuilt = courseBricks.every((b) => b.built);
 			if (!allBuilt) {
 				break;
@@ -131,26 +124,24 @@ const App: React.FC = () => {
 
 		// now we know we want the robot to be on the y position where the envelope just contains this course
 		const newY = Math.min(course * COURSE_HEIGHT + ENVELOPE_HEIGHT / 2, WALL_HEIGHT - ENVELOPE_HEIGHT / 2);
+
 		// now, we're going to move the envelope and try to maximize the number of bricks the robot would
-		// be able to build in a single stride
-
-
+		// can build in a single stride.
 		// we put the envelope's left edge at each brick's left edge, and it's right edge at each brick's right edge, (skipping duplicates of course)
 		// and see which position would allow the most bricks to be built
-		let bestX = robotPos.x;
+		let bestX = robotRef.current.x;
 		let maxBuildable = -1;
 
-		let candidateXPositions = bricksRef.current.flatMap((b) => [b.x + ENVELOPE_WIDTH / 2, b.x + b.length - ENVELOPE_WIDTH / 2]);
+		let candidateXPositions = wall.flatMap((b) => [b.x + ENVELOPE_WIDTH / 2, b.x + b.length - ENVELOPE_WIDTH / 2]);
 		candidateXPositions = candidateXPositions.filter((x, index) => candidateXPositions.indexOf(x) === index); // uniques
 
 		for (let i = 0; i < candidateXPositions.length; i++) {
-			const buildableCount = countBuildableFromPosition(bricksRef.current, { x: candidateXPositions[i], y: newY });
-
+			const buildableCount = countBuildableFromPosition(wall, { x: candidateXPositions[i], y: newY });
 
 			if (buildableCount === maxBuildable) {
 				// choose the position closest to the robot
-				const currentDistance = Math.abs(bestX - robotPos.x);
-				const newDistance = Math.abs(candidateXPositions[i] - robotPos.x);
+				const currentDistance = Math.abs(bestX - robotRef.current.x);
+				const newDistance = Math.abs(candidateXPositions[i] - robotRef.current.x);
 				if (newDistance < currentDistance) {
 					bestX = candidateXPositions[i];
 				}
@@ -190,7 +181,7 @@ const App: React.FC = () => {
 			bricksRef.current = updated;
 			setBricks(updated);
 		} else {
-			const newRobotPos = calculateNewRobotPosition(robotLoc);
+			const newRobotPos = calculateNewRobotPosition();
 			const oldRobotX = robotRef.current.x;
 			const oldRobotY = robotRef.current.y;
 
@@ -259,10 +250,6 @@ const App: React.FC = () => {
 	}, []);
 
 	useEffect(() => {
-		reset();
-	}, [pattern]);
-
-	useEffect(() => {
 		const handleResize = () => {
 			// make the wall between 300 and 600px, but no more than the window height minus a margin (240px) for the header
 			let wallHeightInPx = Math.min(Math.max(innerHeight - 320, 300), 600);
@@ -277,6 +264,9 @@ const App: React.FC = () => {
 		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
+	useEffect(() => {
+		reset();
+	}, [pattern]);
 
 	return (
 		<>
@@ -296,12 +286,21 @@ const App: React.FC = () => {
 						</>
 						:
 						<>
-							<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
-								Press <kbd>Enter</kbd> to build the next brick.
-							</p>
-							<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
-								(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
-							</p>
+							{bricks.every((b) => b.built) ?
+								<>
+									<p onClick={() => reset()} style={{ cursor: "pointer" }}>
+										Press <kbd>r</kbd> to reset the wall.
+									</p>
+								</>
+								: <>
+									<p onClick={() => buildNextBrick()} style={{ cursor: "pointer" }}>
+										Press <kbd>Enter</kbd> to build the next brick.
+									</p>
+									<p id="entireWallHint" onClick={() => buildEntireWall()} style={{ cursor: "pointer" }}>
+										(or <kbd>Shift</kbd> + <kbd>Enter</kbd> to build the entire wall!)
+									</p>
+								</>
+							}
 						</>
 					}
 				</div >

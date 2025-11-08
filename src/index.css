@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,6 +13,15 @@
 	font-display: swap;
 }
 
+/* disable text select */
+* {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
 
 html,
 body {
@@ -59,7 +68,7 @@ body::after {
 }
 
 #main header h1 {
-	font-family: 'Winner Sans', Roboto, Arial, sans-serif;
+	font-family: "Winner Sans", Roboto, Arial, sans-serif;
 	font-size: max(4.5vw, 3rem);
 	margin: 0;
 	font-weight: 800;
@@ -185,12 +194,11 @@ div.toast.visible {
 	opacity: 1;
 }
 
-
 div#creditsSign {
 	bottom: min(160px, 30vh);
 	left: 0px;
 	z-index: -1;
-	color: rgba(0,0,0,.92);
+	color: rgba(0, 0, 0, 0.92);
 	font-family: "Press Start 2P", Arial, Helvetica, sans-serif;
 	font-size: 10px;
 }
@@ -203,7 +211,7 @@ div#creditsSign span {
 }
 
 div#creditsSign a {
-	color: rgba(0,0,0,.92);
+	color: rgba(0, 0, 0, 0.92);
 	text-decoration: none;
 }
 
