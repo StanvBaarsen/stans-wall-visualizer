@@ -29,17 +29,16 @@ function generateStretcherBond(): Brick[] {
 			x += FULL_BRICK_LENGTH + HEAD_JOINT;
 		}
 
-		// if a final half brick fits at the end of a course, add one
-		if (x <= WALL_WIDTH - HALF_BRICK_LENGTH) {
-			bricks.push({ length: HALF_BRICK_LENGTH, x, y, built: false });
-			x += HALF_BRICK_LENGTH + HEAD_JOINT;
+		// fill up any remaining space with a final brick
+		if (x < WALL_WIDTH) {
+			bricks.push({ length: WALL_WIDTH - x, x, y, built: false });
+			x = WALL_WIDTH;
 		}
 	}
 	return bricks;
 }
 
-// based on: https://en.wikipedia.org/wiki/Brickwork#/media/File:Brickwork_in_english_cross_bond.svg
-// but without queen closers
+// based on: https://www.bradley-mason.com/party-wall/a-guide-to-brick-bonds/
 function generateEnglishCrossBond(): Brick[] {
 	const nRows = Math.floor(WALL_HEIGHT / COURSE_HEIGHT);
 	const bricks: Brick[] = [];
@@ -49,30 +48,35 @@ function generateEnglishCrossBond(): Brick[] {
 		let y = row * COURSE_HEIGHT;
 
 		if (row % 2) {
+			// header course
+			// start header courses with a specific small brick, such that the first half-brick of
+			// the course aligns perfectly in the middle of the full brick below it.
+			bricks.push({ length: FULL_BRICK_LENGTH / 4 - HEAD_JOINT, x, y, built: false })
+			x += FULL_BRICK_LENGTH / 4;
+
+			while (x + FULL_BRICK_WIDTH <= WALL_WIDTH) {
+				bricks.push({ length: FULL_BRICK_WIDTH, x, y, built: false });
+				x += FULL_BRICK_WIDTH + HEAD_JOINT;
+			}
+		} else {
 			// stretcher course: add bricks lengthwise
 			while (x + FULL_BRICK_LENGTH <= WALL_WIDTH) {
 				bricks.push({ length: FULL_BRICK_LENGTH, x, y, built: false });
 				x += FULL_BRICK_LENGTH + HEAD_JOINT;
 			}
+		}
 
-			// if a final half brick fits at the end of a course, add one
-			if (x <= WALL_WIDTH - HALF_BRICK_LENGTH) {
-				bricks.push({ length: HALF_BRICK_LENGTH, x, y, built: false });
-				x += HALF_BRICK_LENGTH + HEAD_JOINT;
-			}
-		} else {
-			// header course
-			while (x + FULL_BRICK_WIDTH <= WALL_WIDTH) {
-				bricks.push({ length: FULL_BRICK_WIDTH, x, y, built: false });
-				x += FULL_BRICK_WIDTH + HEAD_JOINT;
-			}
+		// fill up any remaining space with a final brick
+		if (x < WALL_WIDTH) {
+			bricks.push({ length: WALL_WIDTH - x, x, y, built: false });
+			x = WALL_WIDTH;
 		}
 	}
 
 	return bricks;
 }
 
-// based on: https://www.wienerberger.co.uk/tips-and-advice/brickwork/how-do-i-choose-the-correct-brick-bonding-pattern.html
+// based on: https://www.wienerberger.nl/informatie/gevel/verbanden-in-metselwerk.html
 function generateFlemishBond(): Brick[] {
 	const nRows = Math.floor(WALL_HEIGHT / COURSE_HEIGHT);
 	const bricks: Brick[] = [];
@@ -81,6 +85,13 @@ function generateFlemishBond(): Brick[] {
 		let x = 0;
 		let y = row * COURSE_HEIGHT;
 		let brickNrInRow = 0;
+
+		if (row % 2 == 1) {
+			// start odd courses with a specific small brick, such that the first half-brick of
+			// the course aligns perfectly in the middle of the full brick below it.
+			bricks.push({ length: FULL_BRICK_LENGTH / 4 - HEAD_JOINT, x, y, built: false })
+			x += FULL_BRICK_LENGTH / 4;
+		}
 
 		while (x + FULL_BRICK_LENGTH <= WALL_WIDTH) {
 			// stretchers and headers should alternate
@@ -98,10 +109,11 @@ function generateFlemishBond(): Brick[] {
 			brickNrInRow++;
 		}
 
-		// add another header if space allows
-		if (x <= WALL_WIDTH - FULL_BRICK_WIDTH) {
-			bricks.push({ length: FULL_BRICK_WIDTH, x, y, built: false });
-			x += FULL_BRICK_WIDTH + HEAD_JOINT;
+		// fill up any remaining space with a final brick
+		if (x < WALL_WIDTH) {
+			bricks.push({ length: WALL_WIDTH - x, x, y, built: false })
+			x += FULL_BRICK_LENGTH / 4;
+			brickNrInRow++;
 		}
 	}
 

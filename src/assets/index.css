@@ -68,13 +68,25 @@ body::after {
 
 #main header h1 {
 	font-family: "Winner Sans", Roboto, Arial, sans-serif;
-	font-size: max(4.5vw, 3rem);
-	margin: 0;
+	font-size: max(4vw, 2.75rem);
+	line-height: 1.1;
+	margin: 0 auto 16px auto;
 	font-weight: 800;
-	color: #333;
-	letter-spacing: -0.06em;
+	color: #1a024d;
+	background: linear-gradient(90deg, #ff7a33 0%, #f74823 100%);
+	padding: 18px 24px 4px 24px;
+	border-radius: 20px;
+	letter-spacing: -0.04em;
+	box-shadow:
+		0 4px 0 #b62614,
+		0 6px 12px rgba(0, 0, 0, 0.15);
+	text-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
+	display: inline-block;
 }
 
+#main header h1:hover {
+	transform: translateY(-2px);
+}
 #instructions {
 	text-align: center;
 	color: #555;
