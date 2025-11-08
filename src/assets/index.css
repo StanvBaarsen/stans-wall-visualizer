@@ -50,8 +50,7 @@ body::after {
 	height: 120px;
 	border-radius: 50%;
 	background: radial-gradient(circle at 30% 30%, #fff9c4, #fdd835);
-	box-shadow: 0 0 60px 20px rgba(255, 235, 59, 0.5);
-	transition: all 1.5s ease-in-out;
+	box-shadow: 0 0 60px 20px rgba(255, 235, 59, 0.5); /* sunrays */
 }
 
 #main {
@@ -227,6 +226,5 @@ img.crane {
 	width: min(18vw, 260px);
 	height: auto;
 	pointer-events: none;
-	object-fit: contain;
 	transform: scaleX(-1);
 }

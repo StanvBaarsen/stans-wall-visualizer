@@ -1,5 +1,5 @@
 import React from "react";
-import { PATTERN_MAP } from "./wallGenerators";
+import { PATTERN_MAP } from "../lib/wallGenerators";
 
 interface InfoBoxProps {
 	strideCount: number;
@@ -56,10 +56,10 @@ export const InfoBox: React.FC<InfoBoxProps> = ({
 				Settings & Stats
 			</p>
 			<p style={{ margin: 0 }}>
-				<b>Number of strides:</b> {strideCount}
+				<b>Bricks built:</b> {bricks.filter((b) => b.built).length} / {bricks.length}
 			</p>
 			<p style={{ margin: 0 }}>
-				<b>Bricks built:</b> {bricks.filter((b) => b.built).length} / {bricks.length}
+				<b>Number of strides:</b> {strideCount}
 			</p>
 			<p style={{ margin: 0 }}>
 				<b>Bricks per stride:</b> {strideCount > 0 ? (bricks.filter((b) => b.built).length / strideCount).toFixed(2) : "0"}

@@ -19,6 +19,7 @@ function generateStretcherBond(): Brick[] {
 		let y = row * COURSE_HEIGHT;
 
 		if (isOdd) {
+			// start the course with a half brick
 			bricks.push({ length: HALF_BRICK_LENGTH, x, y, built: false });
 			x += HALF_BRICK_LENGTH + HEAD_JOINT;
 		}
@@ -27,6 +28,8 @@ function generateStretcherBond(): Brick[] {
 			bricks.push({ length: FULL_BRICK_LENGTH, x, y, built: false });
 			x += FULL_BRICK_LENGTH + HEAD_JOINT;
 		}
+
+		// if a final half brick fits at the end of a course, add one
 		if (x <= WALL_WIDTH - HALF_BRICK_LENGTH) {
 			bricks.push({ length: HALF_BRICK_LENGTH, x, y, built: false });
 			x += HALF_BRICK_LENGTH + HEAD_JOINT;
@@ -46,11 +49,13 @@ function generateEnglishCrossBond(): Brick[] {
 		let y = row * COURSE_HEIGHT;
 
 		if (row % 2) {
-			// stretcher course
+			// stretcher course: add bricks lengthwise
 			while (x + FULL_BRICK_LENGTH <= WALL_WIDTH) {
 				bricks.push({ length: FULL_BRICK_LENGTH, x, y, built: false });
 				x += FULL_BRICK_LENGTH + HEAD_JOINT;
 			}
+
+			// if a final half brick fits at the end of a course, add one
 			if (x <= WALL_WIDTH - HALF_BRICK_LENGTH) {
 				bricks.push({ length: HALF_BRICK_LENGTH, x, y, built: false });
 				x += HALF_BRICK_LENGTH + HEAD_JOINT;
@@ -62,7 +67,6 @@ function generateEnglishCrossBond(): Brick[] {
 				x += FULL_BRICK_WIDTH + HEAD_JOINT;
 			}
 		}
-
 	}
 
 	return bricks;
@@ -77,9 +81,12 @@ function generateFlemishBond(): Brick[] {
 		let x = 0;
 		let y = row * COURSE_HEIGHT;
 		let brickNrInRow = 0;
-		
+
 		while (x + FULL_BRICK_LENGTH <= WALL_WIDTH) {
-			if((brickNrInRow + row) % 2 === 0) {
+			// stretchers and headers should alternate
+			// but the first row should start with a stretcher,
+			// while the second row should start with a header
+			if ((brickNrInRow + row) % 2 === 0) {
 				// stretcher
 				bricks.push({ length: FULL_BRICK_LENGTH, x, y, built: false });
 				x += FULL_BRICK_LENGTH + HEAD_JOINT;

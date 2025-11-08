@@ -6,7 +6,7 @@ import {
 	WALL_WIDTH,
 	WALL_HEIGHT,
 	type Brick,
-} from "./constants";
+} from "../lib/constants";
 
 interface WallProps {
 	bricks: Brick[];
@@ -112,6 +112,7 @@ export const Wall: React.FC<WallProps> = ({
 
 			<img
 				id="robot"
+				alt="robot icon"
 				style={{
 					left: robot.x * pixelsPerMM,
 					bottom: robot.y * pixelsPerMM,
