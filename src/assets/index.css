@@ -36,7 +36,7 @@ body {
 	justify-content: center;
 	align-items: flex-end;
 	position: relative;
-	background: linear-gradient(to top, #6fb96f 0% 30%, #a0e4ff 25% 100%);
+	background: linear-gradient(to top, #6fb96f 0% 30%, #a0e4ff 30% 100%);
 	transition: background 1.5s ease-in-out;
 }
 
